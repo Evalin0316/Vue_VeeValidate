@@ -58,10 +58,10 @@ export default {
   },
   methods: {
     openModal() {
-      this.modal.show(); //開啟
+      this.modal.show(); //開啟modal
     },
     hideModal() {
-      this.modal.hide(); //關閉
+      this.modal.hide(); //關閉modal
     },
   },
 }
