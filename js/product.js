@@ -1,31 +1,24 @@
 import userProductModal from './userProductModal.js';
 
-const { defineRule, Form, Field, ErrorMessage, configure } = VeeValidate;
-const { required, email, min, max } = VeeValidateRules;
-const { localize, loadLocaleFromURL } = VeeValidateI18n;
+const apiUrl = "https://vue3-course-api.hexschool.io/";
+const apiPath = "ear077";
 
-defineRule('required', required);
-defineRule('email', email);
-defineRule('min', min);
-defineRule('max', max);
 
-loadLocaleFromURL('https://unpkg.com/@vee-validate/i18n@4.1.0/dist/locale/zh_TW.json');
 
-configure({
-  generateMessage: localize('zh_TW'),
-});
-
-const apiUrl = 'https://vue3-course-api.hexschool.io';
-const apiPath = 'ear077';
-
-Vue.createApp({
+const app = Vue.createApp({
   data() {
     return {
+      // 產品列表
+      products: [],
+      //props傳遞到內層的暫存資料
+      product: {},
+      //購物車列表
+      cart: {},
+      //讀取效果
       loadingStatus: {
         loadingItem: '',
       },
-      products: [],
-      product: {},
+      // 表單結構
       form: {
         user: {
           name: '',
@@ -35,110 +28,162 @@ Vue.createApp({
         },
         message: '',
       },
-      cart: {},
     };
   },
-  components: {
-    VForm: Form,
-    VField: Field,
-    ErrorMessage: ErrorMessage,
-  },
   methods: {
-    getProducts() {
-      const url = `${apiUrl}/api/${apiPath}/products`;
-      axios.get(url).then((response) => {
-        if (response.data.success) {
-          console.log(response.data.products);
-          this.products = response.data.products;
-        } else {
-          alert(response.data.message);
-        }
-      });
+    //取得產品列表
+    getProucts() {
+      const url = `${apiUrl}api/${apiPath}/products`;
+      axios.get(url)
+        .then((res) => {
+          if (res.data.success) {
+            console.log("取得產品列表", res);
+            this.products = res.data.products; //將資料 賦予到 data
+          } else if (!res.data.success) {
+            alert("取得產品列表錯誤!");
+          }
+        })
     },
-    getProduct(id) {
-      const url = `${apiUrl}/api/${apiPath}/product/${id}`;
-      this.loadingStatus.loadingItem = id;
-      axios.get(url).then((response) => {
-        if (response.data.success) {
-          this.loadingStatus.loadingItem = '';
-          this.product = response.data.product;
-          this.$refs.userProductModal.openModal();
-        } else {
-          alert(response.data.message);
-        }
-      });
-    },
-    addToCart(id, qty = 1) {
-      const url = `${apiUrl}/api/${apiPath}/cart`;
-      this.loadingStatus.loadingItem = id;
+    //加入購物車
+    addCart(id, qty = 1) {
+      this.loadingStatus.loadingItem = id; //載入特效
       const cart = {
-        product_id: id,
-        qty,
+        "product_id": id
+        , qty
       };
-
-      this.$refs.userProductModal.hideModal();
-      axios.post(url, { data: cart }).then((response) => {
-        if (response.data.success) {
-          alert(response.data.message);
-          this.loadingStatus.loadingItem = '';
-          this.getCart();
-        } else {
-          alert(response.data.message);
-        }
-      });
+      console.log(cart);
+      const api = `${apiUrl}api/${apiPath}/cart`;
+      this.$refs.userProductModal.hideModal(); //用refs取得DMO，關閉MODAL
+      axios.post(api, { data: cart })
+        .then((res) => {
+          if (res.data.success) {
+            alert("加入購物車成功")
+            this.loadingStatus.loadingItem = ''; //載入特跳
+            this.getCart();   //載入購物車列表
+          } else if (!res.data.success) {
+            alert("加入購物錯誤!");
+          }
+        })
     },
-    deleteAllCarts() {
-      const url = `${apiUrl}/api/${apiPath}/carts`;
-      axios.delete(url).then((response) => {
-        if (response.data.success) {
-          alert(response.data.message);
-          this.getCart();
-        } else {
-          alert(response.data.message);
-        }
-      });
-    },
+    //載入購物車列表
     getCart() {
-      const url = `${apiUrl}/api/${apiPath}/cart`;
-      axios.get(url).then((response) => {
-        if (response.data.success) {
-          this.cart = response.data.data;
-        } else {
-          alert(response.data.message);
-        }
-      });
+      const api = `${apiUrl}api/${apiPath}/cart`;
+      axios.get(api)
+        .then((res) => {
+          if (res.data.success) {
+            console.log("獲得購物車列表", res);
+            this.cart = res.data.data; //賦予資料到購物車
+          } else if (!res.data.success) {
+            alert("載入購物列表錯誤!");
+          }
+        })
     },
-    removeCartItem(id) {
-      const url = `${apiUrl}/api/${apiPath}/cart/${id}`;
-      this.loadingStatus.loadingItem = id;
-      axios.delete(url).then((response) => {
-        if (response.data.success) {
-          alert(response.data.message);
-          this.loadingStatus.loadingItem = '';
-          this.getCart();
-        } else {
-          alert(response.data.message);
-        }
-      });
+    //開啟Modal
+    openModal(item) {
+      this.loadingStatus.loadingItem = item.id;//載入特跳
+      const api = `${apiUrl}api/${apiPath}/product/${item.id}`;
+      axios.get(api)
+        .then((res) => {
+          if (res.data.success) {
+            this.product = res.data.product; //寫入單一購物車資料
+            this.loadingStatus.loadingItem = ''; //載入特校回歸
+            this.$refs.userProductModal.openModal(); //用refs取得DMO，開啟MODAL
+          } else if (!res.data.success) {
+            alert("取得單一購物資料錯誤");
+          }
+        })
     },
-    createOrder() {
-      const url = `${apiUrl}/api/${apiPath}/order`;
+    //更新購物車資料
+    updateCart(item) {
+      this.loadingStatus.loadingItem = item.id;//載入特跳
+      const api = `${apiUrl}api/${apiPath}/cart/${item.id}`;
+      const cart = {
+        "product_id": item.product.id,
+        qty: item.qty
+      };
+      console.log(cart, api);
+      axios.put(api, { data: cart })
+        .then((res) => {
+          if (res.data.success) {
+            alert("更新購物車資料成功!");
+            this.loadingStatus.loadingItem = '';//載入特校回歸
+            this.getCart(); //取得購物車列表
+          } else if (!res.data.success) {
+            alert("更新購物車資料失敗!");
+          }
+        })
+    },
+    //刪除單一購物車資料
+    deletCart(id) {
+      console.log(id);
+      const api = `${apiUrl}api/${apiPath}/cart/${id}`;
+      axios.delete(api)
+        .then((res) => {
+          if (res.data.success) {
+            console.log("刪除單一購物車資料", res);
+            alert("刪除單一購物車資料成功!")
+            this.getCart();  //取得購物車列表
+          } else if (!res.data.success) {
+            alert("刪除單一購物車資料失敗!");
+          }
+        })
+    },
+    //刪除全部購物車資料
+    deletAllCart() {
+      const api = `${apiUrl}api/${apiPath}/carts`;
+      axios.delete(api)
+        .then((res) => {
+          if (res.data.success) {
+            console.log("刪除購物車資料", res);
+            alert("刪除購物車資料成功")
+            this.getCart();  //取得購物車列表
+          } else if (!res.data.success) {
+            alert("刪除購物車資料失敗");
+          }
+        })
+    },
+    sendForm() {
+      const api = `${apiUrl}api/${apiPath}/order`;
       const order = this.form;
-      axios.post(url, { data: order }).then((response) => {
-        if (response.data.success) {
-          alert(response.data.message);
-          this.$refs.form.resetForm();
-          this.getCart();
-        } else {
-          alert(response.data.message)
-        }
-      });
+      axios.post(api, { data: order })
+        .then((res) => {
+          if (res.data.success) {
+            console.log("送出表單成功", res);
+            alert("送出表單成功")
+            this.getCart();  //取得購物車列表
+            this.$refs.form.resetForm(); //清空清單
+          } else if (!res.data.success) {
+            alert("送出表單失敗");
+          }
+        })
     },
+
   },
-  created() {
-    this.getProducts();
+  mounted() {
+    this.getProucts();
     this.getCart();
+    //   this.$refs.userProductModal.openModal();
   },
-})
-  .component('userProductModal', userProductModal)
-  .mount('#app');
+});
+
+VeeValidateI18n.loadLocaleFromURL('./zh_TW.json');
+
+// Activate the locale
+VeeValidate.configure({
+  generateMessage: VeeValidateI18n.localize('zh_TW'),
+  validateOnInput: true, // 調整為輸入字元立即進行驗證
+});
+
+//定義規則 全部加入
+Object.keys(VeeValidateRules).forEach(rule => {
+  if (rule !== 'default') {
+    VeeValidate.defineRule(rule, VeeValidateRules[rule]);
+  }
+});
+//註冊全域表單驗證元件
+app.component('VForm', VeeValidate.Form);
+app.component('VField', VeeValidate.Field);
+app.component('ErrorMessage', VeeValidate.ErrorMessage);
+//註冊全域modal元件
+app.component('userProductModal', userProductModal);
+app.mount('#app');
